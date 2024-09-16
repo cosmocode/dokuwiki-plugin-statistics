@@ -325,7 +325,7 @@ class StatisticsLogger {
         $ua      = addslashes($this->ua_agent);
         $ua_type = addslashes($this->ua_type);
         $ua_ver  = addslashes($this->ua_version);
-        $os      = addslashes($this->ua_platform);
+        $os      = $_REQUEST['os'] ? $_REQUEST['os'] : addslashes($this->ua_platform);
         $ua_info = addslashes($this->ua_name);
 
         $page    = addslashes($_REQUEST['p']);
@@ -398,7 +398,7 @@ class StatisticsLogger {
         $ua      = addslashes($this->ua_agent);
         $ua_type = addslashes($this->ua_type);
         $ua_ver  = addslashes($this->ua_version);
-        $os      = addslashes($this->ua_platform);
+        $os      = $_REQUEST['os'] ? $_REQUEST['os'] : addslashes($this->ua_platform);
         $ua_info = addslashes($this->ua_name);
 
         $media    = addslashes($media);

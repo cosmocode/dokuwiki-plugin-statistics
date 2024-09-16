@@ -7,7 +7,7 @@ var plugin_statistics = {
     /**
      * initialize the script
      */
-    init: function () {
+    init: async function () {
 
         // load visitor cookie
         var now = new Date();
@@ -29,6 +29,20 @@ var plugin_statistics = {
             js: 1,
             rnd: now.getTime()
         };
+
+        try {
+            await navigator.userAgentData.getHighEntropyValues(["platformVersion"])
+                .then(ua => {
+                    if (navigator.userAgentData.platform === "Windows") {
+                        const majorPlatformVersion = parseInt(ua.platformVersion.split('.')[0]);
+                        if (majorPlatformVersion >= 13) {
+                            plugin_statistics.data.os = "Win11";
+                        }
+                    }
+                });
+        } catch(error) {
+            // console.log(error);
+        }
 
         // log access
         if (JSINFO['act'] == 'show') {
