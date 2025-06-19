@@ -24,10 +24,10 @@ class StatisticsBrowscap extends Browscap {
      * @return string
      */
     protected function _getRemoteData($url) {
-        $http = new DokuHTTPClient($url);
-        $file = $http->get($url);
-        if(!$file)
-            throw new Exception('Your server can\'t connect to external resources. Please update the file manually.');
-        return $file;
+    $http = new dokuwiki\HTTP\DokuHTTPClient();
+    $file = $http->get($url);
+    if(!$file)
+        throw new Exception('Your server can\'t connect to external resources. Please update the file manually.');
+    return $file;
     }
 }
