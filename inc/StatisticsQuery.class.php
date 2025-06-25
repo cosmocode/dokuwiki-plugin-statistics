@@ -37,10 +37,10 @@ class StatisticsQuery {
                    AND ua_type = 'browser'";
         $result = $this->hlp->runSQL($sql);
 
-        $data['users']     = max($result[0]['users'] - 1, 0); // subtract empty user
-        $data['sessions']  = $result[0]['sessions'];
-        $data['pageviews'] = $result[0]['views'];
-        $data['visitors']  = $result[0]['visitors'];
+        $data['users']     = ($result && isset($result[0])) ? max($result[0]['users'] - 1, 0) : 0; // subtract empty user
+        $data['sessions']  = ($result && isset($result[0])) ? $result[0]['sessions'] : 0;
+        $data['pageviews'] = ($result && isset($result[0])) ? $result[0]['views'] : 0;
+        $data['visitors']  = ($result && isset($result[0])) ? $result[0]['visitors'] : 0;
 
         // calculate bounce rate
         if($data['sessions']) {
@@ -49,7 +49,7 @@ class StatisticsQuery {
                      WHERE $tlimit
                        AND views = 1";
             $result             = $this->hlp->runSQL($sql);
-            $data['bouncerate'] = $result[0]['cnt'] * 100 / $data['sessions'];
+            $data['bouncerate'] = ($result && isset($result[0])) ? $result[0]['cnt'] * 100 / $data['sessions'] : 0;
 
             // new visitors
             $result              = "SELECT COUNT(*) as cnt
@@ -62,7 +62,7 @@ class StatisticsQuery {
                                    AND B.uid = B.uid
                               )";
             $result              = $this->hlp->runSQL($sql);
-            $data['newvisitors'] = $result[0]['cnt'] * 100 / $data['sessions'];
+            $data['newvisitors'] = ($result && isset($result[0])) ? $result[0]['cnt'] * 100 / $data['sessions'] : 0;
         }
 
         // calculate avg. number of views per session
@@ -70,7 +70,7 @@ class StatisticsQuery {
                   FROM " . $this->hlp->prefix . "session as A
                      WHERE $tlimit";
         $result           = $this->hlp->runSQL($sql);
-        $data['avgpages'] = $result[0]['cnt'];
+        $data['avgpages'] = ($result && isset($result[0])) ? $result[0]['cnt'] : 0;
 
         /* not used currently
                 $sql = "SELECT COUNT(id) as robots
@@ -78,7 +78,7 @@ class StatisticsQuery {
                          WHERE $tlimit
                            AND ua_type = 'robot'";
                 $result = $this->hlp->runSQL($sql);
-                $data['robots'] = $result[0]['robots'];
+                $data['robots'] = ($result && isset($result[0])) ? $result[0]['robots'] : 0;
         */
 
         // average time spent on the site
@@ -88,7 +88,7 @@ class StatisticsQuery {
                    AND dt != end
                    AND DATE(dt) = DATE(end)";
         $result            = $this->hlp->runSQL($sql);
-        $data['timespent'] = $result[0]['time'];
+        $data['timespent'] = ($result && isset($result[0])) ? $result[0]['time'] : 0;
 
         // logins
         $sql            = "SELECT COUNT(*) as logins
@@ -96,7 +96,7 @@ class StatisticsQuery {
                  WHERE $tlimit
                    AND (type = 'l' OR type = 'p')";
         $result         = $this->hlp->runSQL($sql);
-        $data['logins'] = $result[0]['logins'];
+        $data['logins'] = ($result && isset($result[0])) ? $result[0]['logins'] : 0;
 
         // registrations
         $sql                   = "SELECT COUNT(*) as registrations
@@ -104,14 +104,14 @@ class StatisticsQuery {
                  WHERE $tlimit
                    AND type = 'C'";
         $result                = $this->hlp->runSQL($sql);
-        $data['registrations'] = $result[0]['registrations'];
+        $data['registrations'] = ($result && isset($result[0])) ? $result[0]['registrations'] : 0;
 
         // current users
         $sql = "SELECT COUNT(*) as current
                   FROM ". $this->hlp->prefix . "lastseen
                  WHERE `dt` >= NOW() - INTERVAL 10 MINUTE";
         $result                = $this->hlp->runSQL($sql);
-        $data['current'] = $result[0]['current'];
+        $data['current'] = ($result && isset($result[0])) ? $result[0]['current'] : 0;
 
         return $data;
     }

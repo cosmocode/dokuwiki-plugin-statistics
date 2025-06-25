@@ -44,19 +44,41 @@ class StatisticsGraph {
         $Chart   = new PieChart(400, 200, $Canvas);
         $Chart->setFontProperties(dirname(__FILE__) . '/pchart/Fonts/DroidSans.ttf', 8);
 
-        $DataSet->AddPoints(array_values($data), 'Serie1');
-        $DataSet->AddPoints(array_keys($data), 'Serie2');
+        // Ensure data values are numeric
+        $values = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, array_values($data));
+        $keys = array_keys($data);
+        
+        // Ensure arrays have at least one element
+        if(empty($values) || empty($keys)) {
+            $values = array(0);
+            $keys = array('No Data');
+        }
+        
+        $DataSet->AddPoints($values, 'Serie1');
+        $DataSet->AddPoints($keys, 'Serie2');
         $DataSet->AddAllSeries();
         $DataSet->SetAbscissaLabelSeries("Serie2");
 
+        // Final data validation before drawing pie chart
+        $pieData = $DataSet->getData();
+        if (is_array($pieData)) {
+            foreach ($pieData as $serieKey => $serieData) {
+                if (is_array($serieData)) {
+                    $pieData[$serieKey] = array_map(function($v) {
+                        return is_numeric($v) ? (float)$v : 0.0;
+                    }, $serieData);
+                }
+            }
+        }
+        
         $Chart->drawBasicPieGraph(
-            $DataSet->getData(),
+            $pieData,
             $DataSet->GetDataDescription(),
             120, 100, 60, PIE_PERCENTAGE
         );
         $Chart->drawPieLegend(
             230, 15,
-            $DataSet->GetData(),
+            $pieData,
             $DataSet->GetDataDescription(),
             new Color(250)
         );
@@ -76,13 +98,35 @@ class StatisticsGraph {
         $result = $this->hlp->Query()->$query($this->tlimit, $this->start, 0, false);
         $data   = array();
         $top    = 0;
+        
+        // Initialize 'other' key
+        if (!isset($data['other'])) {
+            $data['other'] = 0;
+        }
+        
         foreach($result as $row) {
             if($top < $max) {
-                $data[$row[$key]] = $row['cnt'];
+                $keyValue = isset($row[$key]) ? $row[$key] : 'unknown';
+                $cntValue = isset($row['cnt']) ? (is_numeric($row['cnt']) ? (int)$row['cnt'] : 0) : 0;
+                $data[$keyValue] = $cntValue;
             } else {
-                $data['other'] += $row['cnt'];
+                $cntValue = isset($row['cnt']) ? (is_numeric($row['cnt']) ? (int)$row['cnt'] : 0) : 0;
+                if (!isset($data['other'])) {
+                    $data['other'] = 0;
+                }
+                $data['other'] += $cntValue;
             }
             $top++;
+        }
+        
+        // Remove empty 'other' category if it wasn't used
+        if (isset($data['other']) && $data['other'] == 0 && count($data) > 1) {
+            unset($data['other']);
+        }
+        
+        // Ensure we have at least some data
+        if (empty($data)) {
+            $data = array('No Data' => 0);
         }
         $this->PieChart($data);
     }
@@ -108,14 +152,28 @@ class StatisticsGraph {
         $data = array();
         $times = array();
         foreach($result as $row) {
-            $data[] = $row['cnt'];
+            $cntValue = isset($row['cnt']) ? (is_numeric($row['cnt']) ? (int)$row['cnt'] : 0) : 0;
+            $data[] = $cntValue;
             if($interval == 'months') {
-                $times[] = substr($row['time'], 0, 4) . '-' . substr($row['time'], 4, 2);
+                $time = isset($row['time']) ? $row['time'] : '';
+                $times[] = substr($time, 0, 4) . '-' . substr($time, 4, 2);
             } elseif ($interval == 'weeks') {
-                $times[] = $row['EXTRACT(YEAR FROM dt)'] . '-' . $row['time'];
+                $year = isset($row['EXTRACT(YEAR FROM dt)']) ? $row['EXTRACT(YEAR FROM dt)'] : '';
+                $time = isset($row['time']) ? $row['time'] : '';
+                $times[] = $year . '-' . $time;
             }else {
-                $times[] = substr($row['time'], -5);
+                $time = isset($row['time']) ? $row['time'] : '';
+                $times[] = substr($time, -5);
             }
+        }
+
+        // Ensure data contains only numeric values
+        $data = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data);
+        
+        // Ensure arrays have at least one element
+        if(empty($data) || empty($times)) {
+            $data = array(0);
+            $times = array('No Data');
         }
 
         $DataSet = new pData();
@@ -136,7 +194,18 @@ class StatisticsGraph {
             $DataSet, new ScaleStyle(SCALE_NORMAL, new Color(127)),
             45, 1, false, ceil(count($times) / 12)
         );
-        $Chart->drawLineGraph($DataSet->GetData(), $DataSet->GetDataDescription());
+        // Final data validation before drawing
+        $chartData = $DataSet->GetData();
+        if (is_array($chartData)) {
+            foreach ($chartData as $serieKey => $serieData) {
+                if (is_array($serieData)) {
+                    $chartData[$serieKey] = array_map(function($v) {
+                        return is_numeric($v) ? (float)$v : 0.0;
+                    }, $serieData);
+                }
+            }
+        }
+        $Chart->drawLineGraph($chartData, $DataSet->GetDataDescription());
 
         $DataSet->removeSeries('Times');
         $DataSet->removeSeriesName('Times');
@@ -187,9 +256,21 @@ class StatisticsGraph {
         $data3  = array();
 
         foreach($result as $row) {
-            $data1[] = $row['res_x'];
-            $data2[] = $row['res_y'];
-            $data3[] = $row['cnt'];
+            $data1[] = isset($row['res_x']) ? (is_numeric($row['res_x']) ? (int)$row['res_x'] : 0) : 0;
+            $data2[] = isset($row['res_y']) ? (is_numeric($row['res_y']) ? (int)$row['res_y'] : 0) : 0;
+            $data3[] = isset($row['cnt']) ? (is_numeric($row['cnt']) ? (int)$row['cnt'] : 0) : 0;
+        }
+
+        // Ensure all data arrays contain only numeric values
+        $data1 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data1);
+        $data2 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data2);
+        $data3 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data3);
+        
+        // Ensure all arrays have at least one element
+        if(empty($data1) || empty($data2) || empty($data3)) {
+            $data1 = array(0);
+            $data2 = array(0);
+            $data3 = array(0);
         }
 
         $DataSet = new pData;
@@ -208,7 +289,23 @@ class StatisticsGraph {
             'Serie2', 'Serie1'
         );
 
-        $Chart->drawXYPlotGraph($DataSet, 'Serie2', 'Serie1', 0, 20, 2, null, false, 'Serie3');
+        // Validate DataSet before XY plot
+        $validatedDataSet = new pData;
+        $originalData = $DataSet->GetData();
+        if (is_array($originalData)) {
+            foreach ($originalData as $serieKey => $serieData) {
+                if (is_array($serieData)) {
+                    $cleanData = array_map(function($v) {
+                        return is_numeric($v) ? (float)$v : 0.0;
+                    }, $serieData);
+                    $validatedDataSet->AddPoints($cleanData, $serieKey);
+                }
+            }
+            $validatedDataSet->AddAllSeries();
+        } else {
+            $validatedDataSet = $DataSet;
+        }
+        $Chart->drawXYPlotGraph($validatedDataSet, 'Serie2', 'Serie1', 0, 20, 2, null, false, 'Serie3');
         header('Content-Type: image/png');
         $Chart->Render('');
     }
@@ -220,9 +317,21 @@ class StatisticsGraph {
         $data3  = array();
 
         foreach($result as $row) {
-            $data1[] = $row['res_x'];
-            $data2[] = $row['res_y'];
-            $data3[] = $row['cnt'];
+            $data1[] = isset($row['res_x']) ? (is_numeric($row['res_x']) ? (int)$row['res_x'] : 0) : 0;
+            $data2[] = isset($row['res_y']) ? (is_numeric($row['res_y']) ? (int)$row['res_y'] : 0) : 0;
+            $data3[] = isset($row['cnt']) ? (is_numeric($row['cnt']) ? (int)$row['cnt'] : 0) : 0;
+        }
+
+        // Ensure all data arrays contain only numeric values
+        $data1 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data1);
+        $data2 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data2);
+        $data3 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data3);
+        
+        // Ensure all arrays have at least one element
+        if(empty($data1) || empty($data2) || empty($data3)) {
+            $data1 = array(0);
+            $data2 = array(0);
+            $data3 = array(0);
         }
 
         $DataSet = new pData;
@@ -241,7 +350,23 @@ class StatisticsGraph {
             'Serie2', 'Serie1'
         );
 
-        $Chart->drawXYPlotGraph($DataSet, 'Serie2', 'Serie1', 0, 20, 2, null, false, 'Serie3');
+        // Validate DataSet before XY plot
+        $validatedDataSet = new pData;
+        $originalData = $DataSet->GetData();
+        if (is_array($originalData)) {
+            foreach ($originalData as $serieKey => $serieData) {
+                if (is_array($serieData)) {
+                    $cleanData = array_map(function($v) {
+                        return is_numeric($v) ? (float)$v : 0.0;
+                    }, $serieData);
+                    $validatedDataSet->AddPoints($cleanData, $serieKey);
+                }
+            }
+            $validatedDataSet->AddAllSeries();
+        } else {
+            $validatedDataSet = $DataSet;
+        }
+        $Chart->drawXYPlotGraph($validatedDataSet, 'Serie2', 'Serie1', 0, 20, 2, null, false, 'Serie3');
         header('Content-Type: image/png');
         $Chart->Render('');
     }
@@ -273,10 +398,23 @@ class StatisticsGraph {
         $times  = array();
 
         foreach($result as $time => $row) {
-            $data1[] = (int) $row['pageviews'];
-            $data2[] = (int) $row['sessions'];
-            $data3[] = (int) $row['visitors'];
+            $data1[] = isset($row['pageviews']) ? (is_numeric($row['pageviews']) ? (int)$row['pageviews'] : 0) : 0;
+            $data2[] = isset($row['sessions']) ? (is_numeric($row['sessions']) ? (int)$row['sessions'] : 0) : 0;
+            $data3[] = isset($row['visitors']) ? (is_numeric($row['visitors']) ? (int)$row['visitors'] : 0) : 0;
             $times[] = $time . ($hours ? 'h' : '');
+        }
+
+        // Ensure all data arrays contain only numeric values
+        $data1 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data1);
+        $data2 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data2);
+        $data3 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data3);
+        
+        // Ensure all arrays have the same length and at least one element
+        if(empty($data1) || empty($data2) || empty($data3) || empty($times)) {
+            $data1 = array(0);
+            $data2 = array(0);
+            $data3 = array(0);
+            $times = array('No Data');
         }
 
         $DataSet = new pData();
@@ -300,7 +438,18 @@ class StatisticsGraph {
             $DataSet, new ScaleStyle(SCALE_NORMAL, new Color(127)),
             ($hours ? 0 : 45), 1, false, ceil(count($times) / 12)
         );
-        $Chart->drawLineGraph($DataSet->GetData(), $DataSet->GetDataDescription());
+        // Final data validation before drawing
+        $chartData = $DataSet->GetData();
+        if (is_array($chartData)) {
+            foreach ($chartData as $serieKey => $serieData) {
+                if (is_array($serieData)) {
+                    $chartData[$serieKey] = array_map(function($v) {
+                        return is_numeric($v) ? (float)$v : 0.0;
+                    }, $serieData);
+                }
+            }
+        }
+        $Chart->drawLineGraph($chartData, $DataSet->GetDataDescription());
 
         $DataSet->removeSeries('Times');
         $DataSet->removeSeriesName('Times');
@@ -323,10 +472,23 @@ class StatisticsGraph {
         $times  = array();
 
         foreach($result as $time => $row) {
-            $data1[] = (int) $row['E'];
-            $data2[] = (int) $row['C'];
-            $data3[] = (int) $row['D'];
+            $data1[] = isset($row['E']) ? (is_numeric($row['E']) ? (int)$row['E'] : 0) : 0;
+            $data2[] = isset($row['C']) ? (is_numeric($row['C']) ? (int)$row['C'] : 0) : 0;
+            $data3[] = isset($row['D']) ? (is_numeric($row['D']) ? (int)$row['D'] : 0) : 0;
             $times[] = $time . ($hours ? 'h' : '');
+        }
+
+        // Ensure all data arrays contain only numeric values
+        $data1 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data1);
+        $data2 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data2);
+        $data3 = array_map(function($v) { return is_numeric($v) ? (int)$v : 0; }, $data3);
+        
+        // Ensure all arrays have the same length and at least one element
+        if(empty($data1) || empty($data2) || empty($data3) || empty($times)) {
+            $data1 = array(0);
+            $data2 = array(0);
+            $data3 = array(0);
+            $times = array('No Data');
         }
 
         $DataSet = new pData();
@@ -350,7 +512,18 @@ class StatisticsGraph {
             $DataSet, new ScaleStyle(SCALE_NORMAL, new Color(127)),
             ($hours ? 0 : 45), 1, false, ceil(count($times) / 12)
         );
-        $Chart->drawLineGraph($DataSet->GetData(), $DataSet->GetDataDescription());
+        // Final data validation before drawing
+        $chartData = $DataSet->GetData();
+        if (is_array($chartData)) {
+            foreach ($chartData as $serieKey => $serieData) {
+                if (is_array($serieData)) {
+                    $chartData[$serieKey] = array_map(function($v) {
+                        return is_numeric($v) ? (float)$v : 0.0;
+                    }, $serieData);
+                }
+            }
+        }
+        $Chart->drawLineGraph($chartData, $DataSet->GetDataDescription());
 
         $DataSet->removeSeries('Times');
         $DataSet->removeSeriesName('Times');

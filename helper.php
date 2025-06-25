@@ -102,7 +102,10 @@ class helper_plugin_statistics extends Dokuwiki_Plugin {
 
         $result = mysqli_query($link, $sql_string);
         if($result === false) {
-            dbglog('DB Error: ' . mysqli_error($link) . ' ' . hsc($sql_string), -1);
+            // Using modern logger instead of deprecated dbglog
+            if (class_exists('\dokuwiki\Logger')) {
+                \dokuwiki\Logger::error('DB Error: ' . mysqli_error($link) . ' ' . hsc($sql_string));
+            }
             msg('DB Error: ' . mysqli_error($link) . ' ' . hsc($sql_string), -1);
             return null;
         }
