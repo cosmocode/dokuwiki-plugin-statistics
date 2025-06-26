@@ -108,11 +108,14 @@ class admin_plugin_statistics extends DokuWiki_Admin_Plugin {
      * handle user request
      */
     public function handle() {
-        $this->opt = preg_replace('/[^a-z]+/', '', $_REQUEST['opt']);
+        $this->opt = preg_replace('/[^a-z]+/', '', isset($_REQUEST['opt']) ? $_REQUEST['opt'] : '');
         if(!in_array($this->opt, $this->allowedpages)) $this->opt = 'dashboard';
 
-        $this->start = (int) $_REQUEST['s'];
-        $this->setTimeframe($_REQUEST['f'], $_REQUEST['t']);
+        $this->start = (int) (isset($_REQUEST['s']) ? $_REQUEST['s'] : 0);
+        $this->setTimeframe(
+            isset($_REQUEST['f']) ? $_REQUEST['f'] : '',
+            isset($_REQUEST['t']) ? $_REQUEST['t'] : ''
+        );
     }
 
     /**

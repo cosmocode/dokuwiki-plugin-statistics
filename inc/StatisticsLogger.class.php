@@ -19,13 +19,13 @@ class StatisticsLogger {
     public function __construct(helper_plugin_statistics $hlp) {
         $this->hlp = $hlp;
 
-        $this->ua_agent = trim($_SERVER['HTTP_USER_AGENT']);
+        $this->ua_agent = trim(isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '');
         $bc             = new StatisticsBrowscap();
         $ua             = $bc->getBrowser($this->ua_agent);
         $this->ua_name  = $ua->Browser;
         $this->ua_type  = 'browser';
-        if($ua->Crawler) $this->ua_type = 'robot';
-        if($ua->isSyndicationReader) $this->ua_type = 'feedreader';
+        if(isset($ua->Crawler) && $ua->Crawler) $this->ua_type = 'robot';
+        if(isset($ua->isSyndicationReader) && $ua->isSyndicationReader) $this->ua_type = 'feedreader';
         $this->ua_version  = $ua->Version;
         $this->ua_platform = $ua->Platform;
 
@@ -38,7 +38,7 @@ class StatisticsLogger {
      * get the unique user ID
      */
     protected function getUID() {
-        $uid = $_REQUEST['uid'];
+        $uid = isset($_REQUEST['uid']) ? $_REQUEST['uid'] : null;
         if(!$uid) $uid = get_doku_pref('plgstats', false);
         if(!$uid) $uid = session_id();
         return $uid;
@@ -52,7 +52,7 @@ class StatisticsLogger {
      * @return string
      */
     protected function getSession() {
-        $ses = $_REQUEST['ses'];
+        $ses = isset($_REQUEST['ses']) ? $_REQUEST['ses'] : null;
         if(!$ses) $ses = get_doku_pref('plgstatsses', false);
         if(!$ses) $ses = session_id();
         return $ses;
@@ -65,7 +65,7 @@ class StatisticsLogger {
      * regardless from where the log is initiated
      */
     public function log_lastseen() {
-        if(empty($_SERVER['REMOTE_USER'])) return;
+        if(!isset($_SERVER['REMOTE_USER']) || empty($_SERVER['REMOTE_USER'])) return;
         $user = addslashes($_SERVER['REMOTE_USER']);
 
         $sql = "REPLACE INTO " . $this->hlp->prefix . "lastseen
@@ -118,7 +118,7 @@ class StatisticsLogger {
      * Will not write anything if the referer isn't a search engine
      */
     public function log_externalsearch($referer, &$type) {
-        $referer = utf8_strtolower($referer);
+        $referer = \dokuwiki\Utf8\PhpString::strtolower($referer);
         include(dirname(__FILE__) . '/searchengines.php');
         /** @var array $SEARCHENGINES */
 
@@ -128,8 +128,8 @@ class StatisticsLogger {
         // parse the referer
         $urlparts = parse_url($referer);
         $domain   = $urlparts['host'];
-        $qpart    = $urlparts['query'];
-        if(!$qpart) $qpart = $urlparts['fragment']; //google does this
+        $qpart    = isset($urlparts['query']) ? $urlparts['query'] : '';
+        if(!$qpart) $qpart = isset($urlparts['fragment']) ? $urlparts['fragment'] : ''; //google does this
 
         $params = array();
         parse_str($qpart, $params);
@@ -168,14 +168,19 @@ class StatisticsLogger {
         $query = preg_replace('/^(cache|related):[^\+]+/', '', $query); // non-search queries
         $query = preg_replace('/ +/', ' ', $query); // ws compact
         $query = trim($query);
-        if(!utf8_check($query)) $query = utf8_encode($query); // assume latin1 if not utf8
+        if(!\dokuwiki\Utf8\Clean::isUtf8($query)) {
+            // Convert from latin1 to UTF-8 if not already UTF-8
+            $query = mb_convert_encoding($query, 'UTF-8', 'ISO-8859-1');
+        }
 
         // no query? no log
         if(!$query) return;
 
         // log it!
-        $words = explode(' ', utf8_stripspecials($query, ' ', '\._\-:\*'));
-        $this->log_search($_REQUEST['p'], $query, $words, $name);
+        // Replace deprecated utf8_stripspecials with modern equivalent
+        $cleaned_query = preg_replace('/[^\w\s\._\-:\*]/u', '', $query);
+        $words = explode(' ', $cleaned_query);
+        $this->log_search(isset($_REQUEST['p']) ? $_REQUEST['p'] : '', $query, $words, $name);
     }
 
     /**
@@ -244,9 +249,9 @@ class StatisticsLogger {
                  WHERE ip ='" . addslashes($ip) . "'
                    AND lastupd > DATE_SUB(CURDATE(),INTERVAL 30 DAY)";
         $result = $this->hlp->runSQL($sql);
-        if($result[0]['ip']) return;
+        if($result && isset($result[0]) && isset($result[0]['ip']) && $result[0]['ip']) return;
 
-        $http          = new DokuHTTPClient();
+        $http          = new \dokuwiki\HTTP\DokuHTTPClient();
         $http->timeout = 10;
         $data          = $http->get('http://api.hostip.info/get_html.php?ip=' . $ip);
 
@@ -273,12 +278,12 @@ class StatisticsLogger {
      * called from log.php
      */
     public function log_outgoing() {
-        if(!$_REQUEST['ol']) return;
+        if(!isset($_REQUEST['ol']) || !$_REQUEST['ol']) return;
 
         $link     = addslashes($_REQUEST['ol']);
         $link_md5 = md5($link);
         $session  = addslashes($this->getSession());
-        $page     = addslashes($_REQUEST['p']);
+        $page     = addslashes(isset($_REQUEST['p']) ? $_REQUEST['p'] : '');
 
         $sql = "INSERT DELAYED INTO " . $this->hlp->prefix . "outlinks
                     SET dt       = NOW(),
@@ -299,13 +304,13 @@ class StatisticsLogger {
      * called from log.php
      */
     public function log_access() {
-        if(!$_REQUEST['p']) return;
+        if(!isset($_REQUEST['p']) || !$_REQUEST['p']) return;
         global $USERINFO;
 
         # FIXME check referer against blacklist and drop logging for bad boys
 
         // handle referer
-        $referer = trim($_REQUEST['r']);
+        $referer = trim(isset($_REQUEST['r']) ? $_REQUEST['r'] : '');
         if($referer) {
             $ref     = addslashes($referer);
             $ref_md5 = ($ref) ? md5($referer) : '';
@@ -330,13 +335,13 @@ class StatisticsLogger {
 
         $page    = addslashes($_REQUEST['p']);
         $ip      = addslashes(clientIP(true));
-        $sx      = (int) $_REQUEST['sx'];
-        $sy      = (int) $_REQUEST['sy'];
-        $vx      = (int) $_REQUEST['vx'];
-        $vy      = (int) $_REQUEST['vy'];
-        $js      = (int) $_REQUEST['js'];
+        $sx      = (int) (isset($_REQUEST['sx']) ? $_REQUEST['sx'] : 0);
+        $sy      = (int) (isset($_REQUEST['sy']) ? $_REQUEST['sy'] : 0);
+        $vx      = (int) (isset($_REQUEST['vx']) ? $_REQUEST['vx'] : 0);
+        $vy      = (int) (isset($_REQUEST['vy']) ? $_REQUEST['vy'] : 0);
+        $js      = (int) (isset($_REQUEST['js']) ? $_REQUEST['js'] : 0);
         $uid     = addslashes($this->uid);
-        $user    = addslashes($_SERVER['REMOTE_USER']);
+        $user    = addslashes(isset($_SERVER['REMOTE_USER']) ? $_SERVER['REMOTE_USER'] : '');
         $session = addslashes($this->getSession());
 
         $sql = "INSERT DELAYED INTO " . $this->hlp->prefix . "access
@@ -410,7 +415,7 @@ class StatisticsLogger {
 
         $ip      = addslashes(clientIP(true));
         $uid     = addslashes($this->uid);
-        $user    = addslashes($_SERVER['REMOTE_USER']);
+        $user    = addslashes(isset($_SERVER['REMOTE_USER']) ? $_SERVER['REMOTE_USER'] : '');
         $session = addslashes($this->getSession());
 
         $sql = "INSERT DELAYED INTO " . $this->hlp->prefix . "media
@@ -433,7 +438,10 @@ class StatisticsLogger {
         $ok  = $this->hlp->runSQL($sql);
         if(is_null($ok)) {
             global $MSG;
-            dbglog($MSG);
+            // Using modern logger instead of deprecated dbglog
+            if (class_exists('\dokuwiki\Logger')) {
+                \dokuwiki\Logger::debug($MSG);
+            }
         }
     }
 
@@ -444,7 +452,7 @@ class StatisticsLogger {
         global $USERINFO;
 
         $ip      = addslashes(clientIP(true));
-        $user    = addslashes($_SERVER['REMOTE_USER']);
+        $user    = addslashes(isset($_SERVER['REMOTE_USER']) ? $_SERVER['REMOTE_USER'] : '');
         $session = addslashes($this->getSession());
         $uid     = addslashes($this->uid);
         $page    = addslashes($page);
@@ -470,7 +478,7 @@ class StatisticsLogger {
      * Log login/logoffs and user creations
      */
     public function log_login($type, $user = '') {
-        if(!$user) $user = $_SERVER['REMOTE_USER'];
+        if(!$user) $user = isset($_SERVER['REMOTE_USER']) ? $_SERVER['REMOTE_USER'] : '';
 
         $ip      = addslashes(clientIP(true));
         $user    = addslashes($user);

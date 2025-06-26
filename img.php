@@ -15,7 +15,12 @@ session_write_close();
 $plugin = plugin_load('helper', 'statistics');
 try {
     if(!auth_ismanager()) throw new Exception('Access denied');
-    $plugin->Graph()->render($_REQUEST['img'], $_REQUEST['f'], $_REQUEST['t'], $_REQUEST['s']);
+    $plugin->Graph()->render(
+        isset($_REQUEST['img']) ? $_REQUEST['img'] : '',
+        isset($_REQUEST['f']) ? $_REQUEST['f'] : '',
+        isset($_REQUEST['t']) ? $_REQUEST['t'] : '',
+        isset($_REQUEST['s']) ? $_REQUEST['s'] : ''
+    );
 } catch(Exception $e) {
     $plugin->sendGIF(false);
 }

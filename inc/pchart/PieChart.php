@@ -178,8 +178,17 @@ class PieChart extends pChart {
             throw new Exception("Pie chart can only accept one serie of data.");
         /** @todo Proper exception type needed here */
 
-        $SpliceRatio   = 360 / $PieSum;
-        $SplicePercent = 100 / $PieSum;
+        /* Check for division by zero */
+        if($PieSum == 0) {
+            // When all data values are zero, create a single slice representing "No Data"
+            $SpliceRatio   = 360;
+            $SplicePercent = 100;
+            // Reset iValues to have a single 1 value to represent the full circle
+            $iValues = array(1);
+        } else {
+            $SpliceRatio   = 360 / $PieSum;
+            $SplicePercent = 100 / $PieSum;
+        }
 
         /* Calculate all polygons */
         $Angle    = 0;

@@ -15,9 +15,12 @@ session_write_close();
 /** @var helper_plugin_statistics $plugin */
 $plugin = plugin_load('helper', 'statistics');
 
-dbglog('Log ' . $_SERVER['REQUEST_URI']);
+// Using modern logger instead of deprecated dbglog
+if (class_exists('\dokuwiki\Logger')) {
+    \dokuwiki\Logger::debug('Log ' . (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : ''));
+}
 
-switch($_REQUEST['do']) {
+switch(isset($_REQUEST['do']) ? $_REQUEST['do'] : '') {
     case 'v':
         $plugin->Logger()->log_access();
         $plugin->Logger()->log_session(1);

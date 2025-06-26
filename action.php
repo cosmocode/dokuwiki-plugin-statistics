@@ -9,7 +9,7 @@
 if(!defined('DOKU_INC')) die();
 
 if(!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC . 'lib/plugins/');
-require_once(DOKU_PLUGIN . 'action.php');
+// Using autoloading instead of require_once for better compatibility
 
 class action_plugin_statistics extends DokuWiki_Action_Plugin {
 
@@ -113,13 +113,13 @@ class action_plugin_statistics extends DokuWiki_Action_Plugin {
         $act  = $this->_act_clean($event->data);
         if($act == 'logout') {
             $type = 'o';
-        } elseif($_SERVER['REMOTE_USER'] && $act == 'login') {
-            if($_REQUEST['r']) {
+        } elseif(isset($_SERVER['REMOTE_USER']) && $_SERVER['REMOTE_USER'] && $act == 'login') {
+            if(isset($_REQUEST['r']) && $_REQUEST['r']) {
                 $type = 'p';
             } else {
                 $type = 'l';
             }
-        } elseif($_REQUEST['u'] && !$_REQUEST['http_credentials'] && !$_SERVER['REMOTE_USER']) {
+        } elseif(isset($_REQUEST['u']) && $_REQUEST['u'] && !isset($_REQUEST['http_credentials']) && !isset($_SERVER['REMOTE_USER'])) {
             $type = 'f';
         }
         if(!$type) return;
