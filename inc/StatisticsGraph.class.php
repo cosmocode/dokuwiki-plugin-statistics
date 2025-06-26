@@ -54,6 +54,14 @@ class StatisticsGraph {
             $keys = array('No Data');
         }
         
+        // Check if all values are zero
+        $totalSum = array_sum($values);
+        if($totalSum == 0 && count($values) > 1) {
+            // If all values are zero, show a single "No Data" entry
+            $values = array(1);  // Use 1 instead of 0 to avoid division by zero in chart rendering
+            $keys = array('No Data');
+        }
+        
         $DataSet->AddPoints($values, 'Serie1');
         $DataSet->AddPoints($keys, 'Serie2');
         $DataSet->AddAllSeries();
