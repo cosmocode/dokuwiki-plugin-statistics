@@ -41,7 +41,7 @@ class Query
         try {
             $from = new \DateTime($from);
             $to = new \DateTime($to);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             $from = new \DateTime();
             $to = new \DateTime();
         }
