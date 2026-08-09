@@ -8,11 +8,11 @@ namespace dokuwiki\plugin\statistics;
  */
 class StatisticsGraph
 {
-    private \helper_plugin_statistics $hlp;
-    private string $from;
-    private string $to;
-    private int $width;
-    private int $height;
+    private readonly \helper_plugin_statistics $hlp;
+    private readonly string $from;
+    private readonly string $to;
+    private readonly int $width;
+    private readonly int $height;
 
     /**
      * Initialize a new Graph

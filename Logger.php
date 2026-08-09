@@ -562,7 +562,7 @@ class Logger
         /** @var helper_plugin_popularity $pop */
         $pop = plugin_load('helper', 'popularity');
         $list = $this->initEmptySearchList();
-        search($list, $conf['datadir'], [$pop, 'searchCountCallback'], ['all' => false], '');
+        search($list, $conf['datadir'], $pop->searchCountCallback(...), ['all' => false], '');
         $page_count = $list['file_count'];
         $page_size = $list['file_size'];
 
@@ -597,7 +597,7 @@ class Logger
         /** @var helper_plugin_popularity $pop */
         $pop = plugin_load('helper', 'popularity');
         $list = $this->initEmptySearchList();
-        search($list, $conf['mediadir'], [$pop, 'searchCountCallback'], ['all' => true], '');
+        search($list, $conf['mediadir'], $pop->searchCountCallback(...), ['all' => true], '');
         $media_count = $list['file_count'];
         $media_size = $list['file_size'];
 
